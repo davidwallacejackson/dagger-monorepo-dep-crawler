@@ -92,11 +92,11 @@ func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, 
 	}
 
 	// just the dependencies that are directories
-	var upstreamDirectories []string
+	var upstreamDirectoryPaths []string
 
 	fmt.Printf("Cleaned dependencies: %v\n", cleanedDependencies)
 
-	sparseDir := s.Client.Directory()
+	output := s.Client.Directory()
 
 	for _, dependency := range cleanedDependencies {
 		pathType, err := s.pathType(ctx, s.ProjectRoot, dependency)
@@ -108,32 +108,32 @@ func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, 
 
 		switch pathType {
 		case "directory":
-			sparseDir = sparseDir.WithDirectory(dependency, s.ProjectRoot.Directory(dependency))
-			upstreamDirectories = append(upstreamDirectories, dependency)
+			output = output.WithDirectory(dependency, s.ProjectRoot.Directory(dependency))
+			upstreamDirectoryPaths = append(upstreamDirectoryPaths, dependency)
 		case "file":
-			sparseDir = sparseDir.WithFile(dependency, s.ProjectRoot.File(dependency))
+			output = output.WithFile(dependency, s.ProjectRoot.File(dependency))
 		default:
 			fmt.Println("skipping", dependency)
 		}
 	}
 
-	for _, upstreamDirectory := range upstreamDirectories {
-		fmt.Println("upstream directory", upstreamDirectory)
-		upstreamSparseDir, err := s.getSubdirWithDependenciesInner(ctx, upstreamDirectory, false)
+	for _, upstreamDirectoryPath := range upstreamDirectoryPaths {
+		fmt.Println("upstream directory", upstreamDirectoryPath)
+		upstreamDir, err := s.getSubdirWithDependenciesInner(ctx, upstreamDirectoryPath, false)
 		if err != nil {
 			return nil, err
 		}
 
-		sparseDir = sparseDir.WithDirectory("/", upstreamSparseDir)
+		output = output.WithDirectory("/", upstreamDir)
 	}
 
 	// if this is unsparse, we need the whole directory (not just whatever the scanner reported
 	// that we need for resolving dependencies)
 	if !sparse {
-		sparseDir = sparseDir.WithDirectory(relativePath, s.ProjectRoot.Directory(relativePath))
+		output = output.WithDirectory(relativePath, s.ProjectRoot.Directory(relativePath))
 	}
 
-	return sparseDir, nil
+	return output, nil
 }
 
 func NewDependencyScanner(client *dagger.Client, projectRoot *dagger.Directory) DependencyScanner {
