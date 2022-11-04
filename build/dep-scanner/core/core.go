@@ -35,6 +35,8 @@ func DependsFileStrategy(ctx context.Context, projectRoot *dagger.Directory, rel
 	return cleanedLines, nil
 }
 
+var _ ScanStrategy = DependsFileStrategy
+
 func ContainerWithDirectory(
 	container *dagger.Container,
 	path string,
