@@ -55,6 +55,8 @@ func (s *DependencyScanner) pathType(ctx context.Context, dir *dagger.Directory,
 		return "directory", nil
 	case "regular file":
 		return "file", nil
+	case "regular empty file":
+		return "file", nil
 	default:
 		return "", fmt.Errorf("unsupported path type: %s", contents)
 	}
@@ -116,12 +118,13 @@ func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, 
 	}
 
 	for _, upstreamDirectory := range upstreamDirectories {
+		fmt.Println("upstream directory", upstreamDirectory)
 		upstreamSparseDir, err := s.getSubdirWithDependenciesInner(ctx, upstreamDirectory, false)
 		if err != nil {
 			return nil, err
 		}
 
-		sparseDir = sparseDir.WithDirectory(upstreamDirectory, upstreamSparseDir)
+		sparseDir = sparseDir.WithDirectory("/", upstreamSparseDir)
 	}
 
 	// if this is unsparse, we need the whole directory (not just whatever the scanner reported

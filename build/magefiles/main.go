@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"os"
 
 	"dagger.io/dagger"
 	depscanner "github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner"
@@ -12,7 +11,7 @@ import (
 )
 
 func API(ctx context.Context) error {
-	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
+	client, err := dagger.Connect(ctx)
 	if err != nil {
 		return err
 	}
