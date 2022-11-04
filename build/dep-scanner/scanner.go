@@ -31,7 +31,7 @@ func (s *DependencyScanner) pathType(ctx context.Context, dir *dagger.Directory,
 		WithWorkdir("/src")
 
 	output := withDir.Exec(dagger.ContainerExecOpts{
-		Args: []string{"ls", "-l", relativePath},
+		Args: []string{"stat", "-c", "%F", relativePath},
 	})
 
 	exitCode, err := output.ExitCode(ctx)
@@ -48,14 +48,22 @@ func (s *DependencyScanner) pathType(ctx context.Context, dir *dagger.Directory,
 		return "", err
 	}
 
-	if contents[0] == 'd' {
-		return "directory", nil
-	}
+	contents = strings.TrimSpace(contents)
 
-	return "file", nil
+	switch contents {
+	case "directory":
+		return "directory", nil
+	case "regular file":
+		return "file", nil
+	default:
+		return "", fmt.Errorf("unsupported path type: %s", contents)
+	}
+}
+func (s *DependencyScanner) GetSubdirWithDependencies(ctx context.Context, relativePath string) (*dagger.Directory, error) {
+	return s.getSubdirWithDependenciesInner(ctx, relativePath, true)
 }
 
-func (s *DependencyScanner) GetSubdirWithDependencies(ctx context.Context, relativePath string) (*dagger.Directory, error) {
+func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, relativePath string, sparse bool) (*dagger.Directory, error) {
 	var dependencies []string
 
 	// collect a list of file/directory dependencies as paths relative to ProjectRoot
@@ -81,6 +89,9 @@ func (s *DependencyScanner) GetSubdirWithDependencies(ctx context.Context, relat
 		cleanedDependencies = append(cleanedDependencies, cleaned)
 	}
 
+	// just the dependencies that are directories
+	var upstreamDirectories []string
+
 	fmt.Printf("Cleaned dependencies: %v\n", cleanedDependencies)
 
 	sparseDir := s.Client.Directory()
@@ -96,11 +107,27 @@ func (s *DependencyScanner) GetSubdirWithDependencies(ctx context.Context, relat
 		switch pathType {
 		case "directory":
 			sparseDir = sparseDir.WithDirectory(dependency, s.ProjectRoot.Directory(dependency))
+			upstreamDirectories = append(upstreamDirectories, dependency)
 		case "file":
 			sparseDir = sparseDir.WithFile(dependency, s.ProjectRoot.File(dependency))
 		default:
 			fmt.Println("skipping", dependency)
 		}
+	}
+
+	for _, upstreamDirectory := range upstreamDirectories {
+		upstreamSparseDir, err := s.getSubdirWithDependenciesInner(ctx, upstreamDirectory, false)
+		if err != nil {
+			return nil, err
+		}
+
+		sparseDir = sparseDir.WithDirectory(upstreamDirectory, upstreamSparseDir)
+	}
+
+	// if this is unsparse, we need the whole directory (not just whatever the scanner reported
+	// that we need for resolving dependencies)
+	if !sparse {
+		sparseDir = sparseDir.WithDirectory(relativePath, s.ProjectRoot.Directory(relativePath))
 	}
 
 	return sparseDir, nil
