@@ -22,7 +22,7 @@ func DependsFileStrategy(ctx context.Context, projectRoot *dagger.Directory, rel
 
 	lines := strings.Split(string(dependsFile), "\n")
 
-	var cleanedLines []string
+	cleanedLines := []string{".depends-on"}
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
