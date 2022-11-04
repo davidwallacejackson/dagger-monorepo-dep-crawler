@@ -3,7 +3,6 @@ package depscanner
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"dagger.io/dagger"
@@ -77,28 +76,14 @@ func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, 
 		dependencies = append(dependencies, strategyDependencies...)
 	}
 
-	var cleanedDependencies []string
-
-	for _, dependency := range dependencies {
-		trimmed := strings.TrimSpace(dependency)
-
-		if trimmed == "" {
-			continue
-		}
-
-		cleaned := filepath.Clean(filepath.Join(relativePath, trimmed))
-
-		cleanedDependencies = append(cleanedDependencies, cleaned)
-	}
-
 	// just the dependencies that are directories
 	var upstreamDirectoryPaths []string
 
-	fmt.Printf("Cleaned dependencies: %v\n", cleanedDependencies)
+	fmt.Printf("Cleaned dependencies: %v\n", dependencies)
 
 	output := s.Client.Directory()
 
-	for _, dependency := range cleanedDependencies {
+	for _, dependency := range dependencies {
 		pathType, err := s.pathType(ctx, s.ProjectRoot, dependency)
 		if err != nil {
 			return nil, err

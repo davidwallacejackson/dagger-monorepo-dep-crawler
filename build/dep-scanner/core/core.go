@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 
 	"dagger.io/dagger"
@@ -22,17 +23,17 @@ func DependsFileStrategy(ctx context.Context, projectRoot *dagger.Directory, rel
 
 	lines := strings.Split(string(dependsFile), "\n")
 
-	cleanedLines := []string{".depends-on"}
+	cleanedDependencies := []string{".depends-on"}
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	for _, dependency := range lines {
+		dependency = strings.TrimSpace(dependency)
+		if dependency == "" {
 			continue
 		}
-		cleanedLines = append(cleanedLines, line)
+		cleanedDependencies = append(cleanedDependencies, ResolveRelativePath(relativePath, dependency))
 	}
 
-	return cleanedLines, nil
+	return cleanedDependencies, nil
 }
 
 var _ ScanStrategy = DependsFileStrategy
@@ -52,4 +53,14 @@ func ContainerWithFile(
 	file *dagger.File,
 ) *dagger.Container {
 	return container.WithFS(container.FS().WithFile(path, file))
+}
+
+func ResolveRelativePath(
+	basePath string,
+	relativePath string,
+) string {
+	basePath = strings.TrimSpace(basePath)
+	relativePath = strings.TrimSpace(relativePath)
+
+	return filepath.Clean(filepath.Join(basePath, relativePath))
 }
