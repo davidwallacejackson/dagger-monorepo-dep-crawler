@@ -7,6 +7,7 @@ import (
 
 	"dagger.io/dagger"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
+	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/golang"
 )
 
 var strategies = map[string]core.ScanStrategy{}
@@ -16,6 +17,7 @@ func RegisterStrategy(name string, strategy core.ScanStrategy) {
 }
 
 func init() {
+	RegisterStrategy("go", golang.GoModStrategy)
 	RegisterStrategy("depends-file", core.DependsFileStrategy)
 }
 

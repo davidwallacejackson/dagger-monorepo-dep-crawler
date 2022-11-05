@@ -64,3 +64,13 @@ func ResolveRelativePath(
 
 	return filepath.Clean(filepath.Join(basePath, relativePath))
 }
+
+func FileExists(ctx context.Context, file *dagger.File) bool {
+	_, err := file.Contents(ctx)
+	return err == nil
+}
+
+func DirectoryExists(ctx context.Context, dir *dagger.Directory) bool {
+	_, err := dir.Entries(ctx)
+	return err == nil
+}
