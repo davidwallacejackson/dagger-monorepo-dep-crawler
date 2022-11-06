@@ -8,6 +8,7 @@ import (
 	"dagger.io/dagger"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/golang"
+	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/node"
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
 )
@@ -29,6 +30,7 @@ type StrategyConfig struct {
 
 func init() {
 	RegisterStrategy("go", golang.GoModStrategy)
+	RegisterStrategy("node", node.NodeStrategy)
 	RegisterStrategy("depends-file", core.DependsFileStrategy)
 
 	writer := zerolog.NewConsoleWriter()
