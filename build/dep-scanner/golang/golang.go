@@ -39,16 +39,19 @@ func GoModStrategy(ctx context.Context, logger zerolog.Logger, projectRoot *dagg
 
 	dir := projectRoot.Directory(relativePath)
 
+	logger.Trace().Msg("Checking for go.mod file")
 	goModFile, err := dir.File("go.mod").Contents(ctx)
 	if err != nil {
 		return nil, nil
 	}
+	logger.Trace().Msg("Found go.mod file")
 	dependencies = append(dependencies, core.ResolveRelativePath(relativePath, "go.mod"))
 
 	goModParsed, err := modfile.Parse("go.mod", []byte(goModFile), nil)
 	if err != nil {
 		// if the modfile is unparseable, it should still be considered a dependency
 		// but there's no reason to add the rest
+		logger.Trace().Err(err).Msg("Failed to parse go.mod file")
 		return dependencies, nil
 	}
 
@@ -101,8 +104,12 @@ func GoModStrategy(ctx context.Context, logger zerolog.Logger, projectRoot *dagg
 		modulePath, ok := moduleReplacements[getModuleSpec(require.Mod)]
 
 		if !ok {
-			// only modules replaced with filesystem paths are dependencies
-			continue
+			// check for a replacement that can use any version
+			modulePath, ok = moduleReplacements[require.Mod.Path+"@"]
+			if !ok {
+				// only modules replaced with filesystem paths are dagger dependencies
+				continue
+			}
 		}
 
 		dependencies = append(dependencies, modulePath)
