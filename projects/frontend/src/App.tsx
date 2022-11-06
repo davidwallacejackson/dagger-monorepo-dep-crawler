@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import reactLogo from "./assets/react.svg";
 import "./App.css";
 
 function App() {
@@ -16,7 +15,11 @@ function App() {
     console.log(import.meta.env);
 
     const fetchingForName = name;
-    fetch(import.meta.env.VITE_API + `/greet/${name}`)
+    fetch(import.meta.env.VITE_API + `/greet/${name}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (name === fetchingForName) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/lib"
 	"github.com/gin-gonic/gin"
+	"github.com/mandrigin/gin-spa/spa"
 )
 
 func greet(c *gin.Context, name string) {
@@ -30,5 +31,8 @@ func main() {
 		name := c.Param("name")
 		greet(c, name)
 	})
+
+	r.Use(spa.Middleware("/", "./static"))
+
 	r.Run()
 }
