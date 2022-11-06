@@ -8,17 +8,38 @@ import (
 	"dagger.io/dagger"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/golang"
+	"github.com/fatih/color"
+	"github.com/rs/zerolog"
 )
 
-var strategies = map[string]core.ScanStrategy{}
+var strategies = map[string]StrategyConfig{}
+var logger zerolog.Logger
 
 func RegisterStrategy(name string, strategy core.ScanStrategy) {
-	strategies[name] = strategy
+	strategies[name] = StrategyConfig{
+		Name: name,
+		Func: strategy,
+	}
+}
+
+type StrategyConfig struct {
+	Name string
+	Func core.ScanStrategy
 }
 
 func init() {
 	RegisterStrategy("go", golang.GoModStrategy)
 	RegisterStrategy("depends-file", core.DependsFileStrategy)
+
+	writer := zerolog.NewConsoleWriter()
+	writer.FieldsExclude = []string{"strategy"}
+	writer.PartsOrder = []string{
+		zerolog.LevelFieldName,
+		"strategy",
+		zerolog.MessageFieldName,
+	}
+
+	logger = zerolog.New(writer)
 }
 
 type DependencyScanner struct {
@@ -71,7 +92,8 @@ func (s *DependencyScanner) getSubdirWithDependenciesInner(ctx context.Context, 
 
 	// collect a list of file/directory dependencies as paths relative to ProjectRoot
 	for _, strategy := range strategies {
-		strategyDependencies, err := strategy(ctx, s.ProjectRoot, relativePath)
+		strategyLogger := logger.With().Str("strategy", color.HiCyanString(strategy.Name)).Logger()
+		strategyDependencies, err := strategy.Func(ctx, strategyLogger, s.ProjectRoot, relativePath)
 		if err != nil {
 			return nil, err
 		}

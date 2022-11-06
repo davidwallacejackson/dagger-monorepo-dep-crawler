@@ -6,34 +6,42 @@ import (
 	"strings"
 
 	"dagger.io/dagger"
+
+	"github.com/rs/zerolog"
 )
 
-type ScanStrategy = func(ctx context.Context, projectRoot *dagger.Directory, relativePath string) ([]string, error)
+type ScanStrategy func(ctx context.Context, logger zerolog.Logger, projectRoot *dagger.Directory, relativePath string) ([]string, error)
 
-func DependsFileStrategy(ctx context.Context, projectRoot *dagger.Directory, relativePath string) ([]string, error) {
+const dependsFileName = ".depends-on"
+
+func DependsFileStrategy(ctx context.Context, logger zerolog.Logger, projectRoot *dagger.Directory, relativePath string) ([]string, error) {
+	logger.Trace().Msg("Checking for depends file")
 	dir := projectRoot.Directory(relativePath)
 
-	dependsFile, err := dir.File(".depends-on").Contents(ctx)
-	if err != nil {
-		// TODO: assuming for the moment that the only possible error
-		// is that the file doesn't exist. If we can catch something
-		// more specific that'd be better.
+	if !FileExists(ctx, dir.File(dependsFileName)) {
+		logger.Trace().Msg("No depends file found")
 		return nil, nil
 	}
 
-	lines := strings.Split(string(dependsFile), "\n")
+	dependencies := []string{ResolveRelativePath(relativePath, dependsFileName)}
 
-	cleanedDependencies := []string{".depends-on"}
+	dependsFile, err := dir.File(dependsFileName).Contents(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Trace().Msgf("Found depends file")
+	lines := strings.Split(string(dependsFile), "\n")
 
 	for _, dependency := range lines {
 		dependency = strings.TrimSpace(dependency)
 		if dependency == "" {
 			continue
 		}
-		cleanedDependencies = append(cleanedDependencies, ResolveRelativePath(relativePath, dependency))
+		dependencies = append(dependencies, ResolveRelativePath(relativePath, dependency))
 	}
 
-	return cleanedDependencies, nil
+	return dependencies, nil
 }
 
 var _ ScanStrategy = DependsFileStrategy

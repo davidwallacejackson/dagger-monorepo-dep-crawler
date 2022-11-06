@@ -7,6 +7,7 @@ import (
 
 	"dagger.io/dagger"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
+	"github.com/rs/zerolog"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 )
@@ -33,7 +34,7 @@ func getModuleSpec(version module.Version) string {
 	return fmt.Sprintf("%s@%s", version.Path, version.Version)
 }
 
-func GoModStrategy(ctx context.Context, projectRoot *dagger.Directory, relativePath string) ([]string, error) {
+func GoModStrategy(ctx context.Context, logger zerolog.Logger, projectRoot *dagger.Directory, relativePath string) ([]string, error) {
 	var dependencies = []string{}
 
 	dir := projectRoot.Directory(relativePath)
