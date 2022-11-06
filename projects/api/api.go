@@ -18,6 +18,11 @@ func greet(c *gin.Context, name string) {
 func main() {
 	r := gin.Default()
 
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Next()
+	})
+
 	r.GET("/greet", func(c *gin.Context) {
 		greet(c, "stranger")
 	})
