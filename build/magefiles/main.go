@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"dagger.io/dagger"
 	depscanner "github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner"
@@ -11,7 +12,7 @@ import (
 )
 
 func API(ctx context.Context) error {
-	client, err := dagger.Connect(ctx)
+	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
 	if err != nil {
 		return err
 	}
@@ -33,6 +34,7 @@ func API(ctx context.Context) error {
 		Container().
 		From("golang:latest"), "/src", sparseDir).
 		WithWorkdir("/src/projects/api").
+		WithEnvVariable("GOOS", "darwin").
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "mod", "download"},
 		})
