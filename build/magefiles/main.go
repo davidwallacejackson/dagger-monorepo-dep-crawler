@@ -5,16 +5,17 @@ package main
 import (
 	"context"
 	"os"
+	"runtime"
 
 	"dagger.io/dagger"
 	depscanner "github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
 )
 
-func API(ctx context.Context) error {
+func apiBinary(ctx context.Context, goos string, goarch string) (*dagger.File, error) {
 	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer client.Close()
@@ -27,24 +28,38 @@ func API(ctx context.Context) error {
 
 	sparseDir, err := dependencyScanner.GetSubdirWithDependencies(ctx, "projects/api")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	depsContainer := core.ContainerWithDirectory(client.
 		Container().
 		From("golang:latest"), "/src", sparseDir).
 		WithWorkdir("/src/projects/api").
-		WithEnvVariable("GOOS", "darwin").
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "mod", "download"},
 		})
 
-	apiBinary := core.ContainerWithDirectory(depsContainer, "/src/projects/api", dir.Directory("projects/api")).
+	return core.
+		ContainerWithDirectory(depsContainer, "/src/projects/api", dir.Directory("projects/api")).
+		WithEnvVariable("GOOS", goos).
+		WithEnvVariable("GOARCH", goarch).
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "build", "-o", "../../dist/api"},
 		}).
-		File("/src/dist/api")
+		File("/src/dist/api"), nil
+}
 
-	_, err = apiBinary.Export(ctx, "./dist/api")
+func APIDev(ctx context.Context) error {
+	goos, goarch := getOsArch()
+	binary, err := apiBinary(ctx, goos, goarch)
+	if err != nil {
+		return err
+	}
+
+	_, err = binary.Export(ctx, "./dist/api")
 	return err
+}
+
+func getOsArch() (string, string) {
+	return runtime.GOOS, runtime.GOARCH
 }
