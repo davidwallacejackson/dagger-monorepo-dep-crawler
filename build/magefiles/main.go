@@ -45,6 +45,7 @@ func apiBinary(ctx context.Context, client *dagger.Client, goos string, goarch s
 		ContainerWithDirectory(depsContainer, "/src/projects/api", dir.Directory("projects/api")).
 		WithEnvVariable("GOOS", goos).
 		WithEnvVariable("GOARCH", goarch).
+		WithEnvVariable("CGO_ENABLED", "0").
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "build", "-o", "../../dist/api"},
 		}).

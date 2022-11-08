@@ -21,13 +21,14 @@ func main() {
 
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Cache-Control", "no-cache")
 		c.Next()
 	})
 
-	r.GET("/greet", func(c *gin.Context) {
+	r.GET("/api/greet", func(c *gin.Context) {
 		greet(c, "stranger")
 	})
-	r.GET("/greet/:name", func(c *gin.Context) {
+	r.GET("/api/greet/:name", func(c *gin.Context) {
 		name := c.Param("name")
 		greet(c, name)
 	})
