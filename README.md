@@ -20,7 +20,7 @@ COPY . /src
 RUN go build
 ```
 
-This Dockerfile ensures that the apt installation won't rerun unless we change its command, and the Go dependency installation step won't re-run when we haven't changed the dependencies in the manifest. By ordering our Dockerfile from least-frequently changing to most-frequently changing actions, we can minimize the amount of work done on each build.
+This Dockerfile ensures that the apt installation won't rerun unless we change its command, and the Go dependency installation step won't re-run when we haven't changed the dependencies in the manifest.
 
 Monorepos complicate this picture. Let's consider the sample monorepo in this repository, which contains:
 
@@ -38,7 +38,7 @@ graph TD
     frontend --> docker
 ```
 
-We want to preserve the behavior that we had in the simple Dockerfile above: when a package's source changes, but not its dependencies, that package should rebuild against the previously-constructed dependency layer. Concretely:
+We want to preserve the behavior that we had in the simple Dockerfile above: **when a package's source changes, but not its dependencies, that package should rebuild against the previously-constructed dependency layer**. Concretely:
 
 - A change to lib should rebuild lib, api, cli, and the Docker container, but not frontend
 - A change to cli should rebuild only cli
