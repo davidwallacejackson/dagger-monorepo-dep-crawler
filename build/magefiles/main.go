@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"dagger.io/dagger"
@@ -22,13 +23,13 @@ func getWorkdir(client *dagger.Client) *dagger.Directory {
 	})
 }
 
-func apiBinary(ctx context.Context, client *dagger.Client, goos string, goarch string) (*dagger.File, error) {
-
+func goBuilder(ctx context.Context, client *dagger.Client, projectDir string, goos string, goarch string) (*dagger.Container, error) {
 	dir := getWorkdir(client)
-
 	dependencyScanner := depscanner.NewDependencyScanner(client, dir)
 
-	sparseDir, err := dependencyScanner.GetSubdirWithDependencies(ctx, "projects/api")
+	projectPath := filepath.Join("projects", projectDir)
+
+	sparseDir, err := dependencyScanner.GetSubdirWithDependencies(ctx, projectPath)
 	if err != nil {
 		return nil, err
 	}
@@ -36,16 +37,25 @@ func apiBinary(ctx context.Context, client *dagger.Client, goos string, goarch s
 	depsContainer := core.ContainerWithDirectory(client.
 		Container().
 		From("golang:latest"), "/src", sparseDir).
-		WithWorkdir("/src/projects/api").
+		WithWorkdir(filepath.Join("/src", projectPath)).
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "mod", "download"},
 		})
 
 	return core.
-		ContainerWithDirectory(depsContainer, "/src/projects/api", dir.Directory("projects/api")).
+		ContainerWithDirectory(depsContainer, filepath.Join("/src", projectPath), dir.Directory(projectPath)).
 		WithEnvVariable("GOOS", goos).
 		WithEnvVariable("GOARCH", goarch).
-		WithEnvVariable("CGO_ENABLED", "0").
+		WithEnvVariable("CGO_ENABLED", "0"), nil
+}
+
+func apiBinary(ctx context.Context, client *dagger.Client, goos string, goarch string) (*dagger.File, error) {
+	container, err := goBuilder(ctx, client, "api", goos, goarch)
+	if err != nil {
+		return nil, err
+	}
+
+	return container.
 		Exec(dagger.ContainerExecOpts{
 			Args: []string{"go", "build", "-o", "../../dist/api"},
 		}).
@@ -144,5 +154,29 @@ func DockerContainer(ctx context.Context) error {
 		WithEntrypoint([]string{"/app/api"})
 
 	_, err = final.Export(ctx, "./dist/container.tgz")
+	return err
+}
+
+func Cli(ctx context.Context) error {
+	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+
+	defer client.Close()
+
+	goos, goarch := getOsArch()
+	builder, err := goBuilder(ctx, client, "cli", goos, goarch)
+	if err != nil {
+		return err
+	}
+
+	cli := builder.
+		Exec(dagger.ContainerExecOpts{
+			Args: []string{"go", "build", "-o", "../../dist/cli"},
+		}).
+		File("/src/dist/cli")
+
+	_, err = cli.Export(ctx, "./dist/cli")
 	return err
 }
