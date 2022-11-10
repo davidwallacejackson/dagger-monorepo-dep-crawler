@@ -3,7 +3,6 @@ package depscanner
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"dagger.io/dagger"
 	"github.com/davidwallacejackson/dagger-monorepo-dep-crawler/build/dep-scanner/core"
@@ -50,40 +49,17 @@ type DependencyScanner struct {
 }
 
 func (s *DependencyScanner) pathType(ctx context.Context, dir *dagger.Directory, relativePath string) (string, error) {
-	withDir := core.ContainerWithDirectory(s.Client.Container().
-		From("alpine:latest"), "/src", dir).
-		WithWorkdir("/src")
-
-	output := withDir.Exec(dagger.ContainerExecOpts{
-		Args: []string{"stat", "-c", "%F", relativePath},
-	})
-
-	exitCode, err := output.ExitCode(ctx)
-	if err != nil {
-		return "", err
+	_, err := dir.File(relativePath).Contents(ctx)
+	if err == nil {
+		return "file", nil
 	}
 
-	if exitCode != 0 {
-		return "invalid", nil
-	}
-
-	contents, err := output.Stdout().Contents(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	contents = strings.TrimSpace(contents)
-
-	switch contents {
-	case "directory":
+	_, err = dir.Directory(relativePath).Entries(ctx)
+	if err == nil {
 		return "directory", nil
-	case "regular file":
-		return "file", nil
-	case "regular empty file":
-		return "file", nil
-	default:
-		return "", fmt.Errorf("unsupported path type: %s", contents)
 	}
+
+	return "", fmt.Errorf("path %s is neither a file nor a directory", relativePath)
 }
 func (s *DependencyScanner) GetSubdirWithDependencies(ctx context.Context, relativePath string) (*dagger.Directory, error) {
 	return s.getSubdirWithDependenciesInner(ctx, relativePath, true)
